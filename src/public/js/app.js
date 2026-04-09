@@ -62,12 +62,29 @@ formRoom.addEventListener("submit", handleRoomSubmit);
 formNickname.addEventListener("submit", handleNicknameSubmit);
 
 
-socket.on("welcome", (user) => {
+socket.on("welcome", (user, count) => {
+  const h3 = room.querySelector("h3");
+  h3.innerText = `Room ${roomName} (${count})`;  
   addMessage(`${user} joined!`);
 });
 
-socket.on("bye", (leftNickname) => {
+socket.on("bye", (leftNickname, count) => {
+  const h3 = room.querySelector("h3");
+  h3.innerText = `Room ${roomName} (${count})`;
   addMessage(`${leftNickname} left`);
 });
 
 socket.on("new_message", addMessage);
+
+socket.on("room_change", (rooms) => {
+  const roomList = welcome.querySelector("ul");
+  roomList.innerHTML = "";
+  if (rooms.length === 0) {
+    return;
+  }
+  rooms.forEach((room) => {
+    const li = document.createElement("li");
+    li.innerText = room;
+    roomList.append(li);
+  });
+});

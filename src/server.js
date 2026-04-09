@@ -1,6 +1,7 @@
+import { Socket } from "dgram";
 import express from "express";
 import http from "http";
-import WebSocket from "ws";
+import SocketIO from "socket.io";
 
 const app = express();
 
@@ -10,15 +11,36 @@ app.use("/public", express.static(__dirname + "/public"));
 
 app.get("/", (req, res) => res.render("home"));
 
-const handleListen = () =>
-  console.log(`Server listening on http://localhost:3000`);
-
 //create server
-const server = http.createServer(app);
+const httpServer = http.createServer(app);
+const wsServer = SocketIO(httpServer);
+
+wsServer.on("connection", (socket) => {
+  console.log(`Connected to Browser ✅ : ${socket.id}`);
+  
+  socket["nickname"] = "Anonymous";
+
+  socket.on("enter_room", (roomName, nickName, done) => {
+    socket["nickname"] = nickName || "Anonymous";
+    socket.join(roomName);
+    console.log(roomName, socket.rooms);
+    done();
+    socket.to(roomName).emit("welcome", socket.nickname);
+  });
+
+  socket.on("disconnecting", () => {
+    socket.rooms.forEach((room) => socket.to(room).emit("bye", socket.nickname));
+  });
+
+  socket.on("new_message", (msg, room, done) => {
+    socket.to(room).emit("new_message", `${socket.nickname} : ${msg}`);
+    done();
+  });
+
+  socket.on("nickname", (nickname) => socket["nickname"] = nickname);
+});
+/*
 const wss = new WebSocket.Server({ server });
-
-server.listen(3000, handleListen);
-
 const sockets = [];
 //listen to connection event
 wss.on("connection", (socket) => {
@@ -38,4 +60,9 @@ wss.on("connection", (socket) => {
         socket["nickname"] = message.payload;
     }
   });
-});
+});*/
+
+const PORT = Number(process.env.PORT) || 3000;
+httpServer.listen(PORT, () =>
+  console.log(`Server listening on http://localhost:${PORT}`),
+);
